@@ -1,0 +1,1 @@
+start "KryptoBot" java -jar findbooster.jar > run.log

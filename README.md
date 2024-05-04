@@ -1,104 +1,456 @@
-# Binance API Crypto Trading Bot using Binance Rest API
+# Java Binance API
 
+binance-java-api is a lightweight Java library for interacting with the [Binance API](https://www.binance.com/restapipub.html), providing complete API coverage, and supporting synchronous and asynchronous requests, as well as event streaming using WebSockets.
 
-# Bot Beschreibung:
-Im prinzip suche ich nach kurz sprüngen nach oben (boost innerhalb von x minuten) oder mit minus werten nach unten (fallender kurz in den letzten x minuten)
-und steige dann mit limit buy (leicht überhöht damit ich trade erwische * 1.0028) ein und verkaufe mit x % sellpoint wieder oder fall wir weiter fallen market sell instantly
-wenn unter schwellwert (stoploss) fällt.
+**NOTE**: This project has won the [Binance API Competition](https://support.binance.com/hc/en-us/articles/115002294131-Java-Winner-of-Binance-API-Competition) for the Java language, and as such, this repository has been forked, and the official version can be found at https://github.com/binance-exchange/binance-java-api, where all further upgrades will be done.
 
-Dementsprechend wichtig wäre es rauszufinden welches boost oder drop wert signifikant ist um am besten mitzuschneiden statistisch. In den Monaten wo ich getestet habe war immer 2.7-2.9 recht gut, findet aber viel was
-weiter nach unten sackt oder nicht mehr weiter boostet ... Höhere werte liefern weniger trades könnten aber statitisch gesehen sicherer sein, das wird nur die zukunft zeigen in findings.log ...
+## Features
+* Support for synchronous and asynchronous REST requests to all [General](https://www.binance.com/restapipub.html#user-content-general-endpoints), [Market Data](https://www.binance.com/restapipub.html#user-content-market-data-endpoints), [Account](https://www.binance.com/restapipub.html#user-content-account-endpoints) endpoints, and [User](https://www.binance.com/restapipub.html#user-content-user-data-stream-endpoints) stream endpoints.
+* Support for User Data, Trade, Kline, and Depth event streaming using [Binance WebSocket API](https://www.binance.com/restapipub.html#wss-endpoint).
 
-# Das Analyse Script - findings.properties
+## Installation
+1. Install library into your Maven's local repository by running `mvn install`
+2. Add the following Maven dependency to your project's `pom.xml`:
+```
+<dependency>
+  <groupId>com.binance.api</groupId>
+  <artifactId>binance-api-client</artifactId>
+  <version>1.0.0</version>
+</dependency>
+```
 
-Alle findings werden als "treffer" mal am PI in findings.properties gespeichert, egal ob live trading aktiv ist oder nicht.
-Es ist ein property file damit man schneller beim simulieren von Ergebnissen in der IDE ein- und auskommentieren kann.
-Mit dem Analyse Skript "AnalyseFindings.java" kann man dann jederzeit die findings nachträglich einlesen und mit den parameters des bots evaluieren "was-wäre-wenn" gewesen. 
-Er parsed sich alle candlesticks pro finding reverse durch zum kaufzeitpunkt und schaut ob win oder stoploss mit den parametern die man setzt eingetreten wäre oder nicht und errechnet eine summe über alle trades.
-Damit kann ich jederzeit simulieren was wäre gewesen wenn ich andere parameter verwendet hätte im Bot und so lange optimieren bis ein langfristiges plus rauskommt, man braucht halt viele daten.
+Alternatively, you can clone this repository and run the [examples](https://github.com/joaopsilva/binance-java-api/tree/master/src/test/java/com/binance/api/examples).
 
-Achtung: wenn das file mal über 3000 zeilen hat muss man eine thread bremse einbauen oder max threads auf um die 30-40 setzen sonst gibts wegen der candlestick massendaten einen binance block für einige minuten bis die api wieder geht!
+## Examples
 
-# Wie startet man den Krypto BOT zum traden:
+### Getting Started
 
-A) lokal aus Eclipse: FindBooster.jar anwerfen
+There are three main client classes that can be used to interact with the API:
 
-B) am PI: alles automatisiert rennt am host: dil@raspberrypi (user dil oder root)
-raspberrypi user und passwörter: dil/dil, root/root
+1. [`BinanceApiRestClient`](https://github.com/joaopsilva/binance-java-api/blob/master/src/main/java/com/binance/api/client/BinanceApiRestClient.java), a synchronous/blocking [Binance API](https://www.binance.com/restapipub.html) client;
+2. [`BinanceApiAsyncRestClient`](https://github.com/joaopsilva/binance-java-api/blob/master/src/main/java/com/binance/api/client/BinanceApiAsyncRestClient.java), an asynchronous/non-blocking [Binance API](https://www.binance.com/restapipub.html) client;
+3. [`BinanceApiWebSocketClient`](https://github.com/joaopsilva/binance-java-api/blob/master/src/main/java/com/binance/api/client/BinanceApiWebSocketClient.java), a data streaming client using [Binance WebSocket API](https://www.binance.com/restapipub.html#wss-endpoint).
 
-./kill.sh - stoppt den bot (killt ihn am pi)
-./start.sh - startet den bot
-./status.sh - schauen ob java prozess rennt (im "screen" am pi -> googeln, braucht man um prozess am leben zu erhalten nach start per script)
-./watch.sh - gibt run.log aus
-./find.sh - macht eine analyse aufgrund findings.log (achtung wenn zuviel daten drin 3000 einträge -> Binance API block und möglicherweise IP sperre!)
+These can be instantiated through the corresponding factory method of [`BinanceApiClientFactory`](https://github.com/joaopsilva/binance-java-api/blob/master/src/main/java/com/binance/api/client/BinanceApiClientFactory.java), by passing the [security parameters](https://www.binance.com/restapipub.html#user-content-endpoint-security-type) `API-KEY` and `SECRET`, which can be created at [https://www.binance.com/userCenter/createApi.html](https://www.binance.com/userCenter/createApi.html).
 
-log files:
-run.log -> der bot selbst
-alive.log -> alive log (alle 20 minuten - watch time frame)
-result.log -> summary aller trades ob es ein win oder loss war
-findings.log -> sämtliche findings werden getracked unabhängig davon ob wir traden oder nicht
+```java
+BinanceApiClientFactory factory = BinanceApiClientFactory.newInstance("API-KEY", "SECRET");
+BinanceApiRestClient client = factory.newRestClient();
+```
 
+If the client only needs to access endpoints which do not require additional security, then these parameters are optional.
 
-# DEPLOY SCRIPT FÜR RASPBERRYPI @HOME:
+Once the client is instantiated, it is possible to start making requests to the API.
 
-1.) Um den aktuellsten maven bot auf den PI zu pushen gibt es ein Script welches alles macht automatisch vom deploy, kill und restart des bots am PI. Doppelklick und paar sekunden warten.
-C:\develop\BinanceBoosterBot\pushbot.bat
+### General endpoints
 
-2.) Geht das fenster zu kann man sich per ssh am PI einloggen (taskbar verknüpfung mit user dil) und das watch script starten oder run.log ausgeben. ./watch.sh würde mit monitoren was er macht.
-alive.log zeigt alle 20 minuten an ob er noch rennt und hält binance api alive und macht paar sachen wie balance re-calculation, usw.
+#### Test connectivity
+```java
+client.ping();
+```
+#### Check server time
+```java
+long serverTime = client.getServerTime();
+System.out.println(serverTime);
+```
+<details>
+ <summary>View Response</summary>
+ 
+```java
+1508380346873
+```
+</details>
 
-Jeder der Java kann kann den bot starten und debuggen, erweitern, fixen, etc.
-Parameter Beschreibung ist im environment.properties so gut geht als einzeiler, ums zu verstehen kann sein das man einfach im code lesen muss was gedacht war mit dem parameter falls er ned sprechend genug gewählt wurde.
-Das meiste ist hoffentlich logisch und selbst erklärend, folgende parameter kurz erklärt weil sie sollten gegen schlechte trades absichern und damit wird man spielen müssen bzw. erweitern:
+### Market Data endpoints
 
+#### Order book of a symbol
+```java
+OrderBook orderBook = client.getOrderBook("NEOETH", 10);
+List<OrderBookEntry> asks = orderBook.getAsks();
+OrderBookEntry firstAskEntry = asks.get(0);
+System.out.println(firstAskEntry.getPrice() + " / " + firstAskEntry.getQty());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+0.09200000 / 5.52000000
+```
+</details>
 
-# PARAMETER QUICK-DOKUMENTATION
+#### Compressed/Aggregate trades list of a symbol
+```java
+List<AggTrade> aggTrades = client.getAggTrades("NEOETH");
+System.out.println(aggTrades);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[AggTrade[aggregatedTradeId=30593,price=0.09880800,quantity=40.89000000,firstBreakdownTradeId=33363,lastBreakdownTradeId=33363,tradeTime=1508331041246,isBuyerMaker=true], ...]
+```
+</details>
 
-Ein token mit -30 im daily dumpt zu hard da reinsteigen = verlust, 
-gleich wenn etwas im daily schon + 80% hat kanns fast nur mehr nach unten gehen
-Damit kann man eine range angeben in welcher wir tokens fürs trading akzeptieren und im booster/dumpster bot suchen:
+#### Weekly candlestick bars for a symbol
+```java
+List<Candlestick> candlesticks = client.getCandlestickBars("NEOETH", CandlestickInterval.WEEKLY);
+System.out.println(candlesticks);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[Candlestick[openTime=1506297600000,open=0.09700000,high=0.12000100,low=0.05500000,close=0.11986900,volume=25709.37000000,closeTime=1506902399999,quoteAssetVolume=2649.80091051,numberOfTrades=2435,takerBuyBaseAssetVolume=10520.59000000,takerBuyQuoteAssetVolume=1101.94985388], ...] 
+```
+</details>
 
-# daily range for booster - Welchen wert im daily soll ein token haben damit wir den trade eingehen. 
-max_daily=12.5
-min_daily=-18
+#### Latest price of a symbol
+```java
+TickerStatistics tickerStatistics = client.get24HrPriceStatistics("NEOETH");
+System.out.println(tickerStatistics.getLastPrice());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+0.09100100
+```
+</details>
 
-Wenn BTC im Roten ist, zieht er meist den ganzen markt runter, sprich minus im BTC zieht alles down, damit sollte dieser parameter abfangen und nur trades eingehen wenn BTC einen mindest wert im daily hat und nicht gerade dumped!!
+#### Getting all latests prices
+```java
+List<TickerPrice> allPrices = client.getAllPrices();
+System.out.println(allPrices);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[TickerPrice[symbol=ETHBTC,price=0.05590400], TickerPrice[symbol=LTCBTC,price=0.01073300], ...]
+```
+</details>
 
-# btc daily 24hTicker check
-btcDaily.active=true
-btcDaily.min=0.0
+### Account Data endpoints
 
-in 2-3 monaten gibt es gefühlt 1 wochenende in dem der markt gut performed, drum wochenends sollte er einfach nichts eingehen, 6,7,1 sind gute settings. ab sonntag in der nacht auf Montag ist er eh wieder dabei zum wochenstart
+#### Get account balances
+```java
+Account account = client.getAccount();
+System.out.println(account.getBalances());
+System.out.println(account.getAssetBalance("ETH").getFree());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+AssetBalance[asset=ETH,free=0.10000000,locked=0.00000000]
+0.10000000
+```
+</details>
 
-# skipDays/weekend check (do not trade on these days!)
-# Mo(2) Di(3), Mi(4), Do(5), Fr(6), Sa(7) So(1)
-skipDays.active=true
-skipDays.days=6,7,1
+#### Get list of trades for an account and a symbol
+```java
+List<Trade> myTrades = client.getMyTrades("NEOETH");
+System.out.println(myTrades);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[Trade[id=123,price=0.00000100,qty=1000.00000000,commission=0.00172100,commissionAsset=ETH,time=1507927870561,buyer=false,maker=false,bestMatch=true,symbol=<null>,orderId=11289], Trade[id=123,price=0.00001000,qty=3.00000000,commission=0.00000003,commissionAsset=ETH,time=1507927874215,buyer=false,maker=false,bestMatch=true,symbol=<null>,orderId=123]]
+```
+</details>
 
-# RSI Indikator
-RSI (top im findings.log zum testen) range in welcher wir den trad akzeptiert hätten. wichtig hier, nur zur laufzeit errechnen und speichern wir den RSI (15min, 30min, 1h, 4h, 1D, usw.) damit hab ich leider akuell nur  RSIs von aktuellen findings in der hand. besser wäre a) zur laufzeit alle errechnen, kostet aber zeit die nur hat wenn nicht getraded wird grad!! oder im skript nach einbauen, aber dann IP sperre wegen der load der candlestick daten, also bremse einbauen!
-datapoints und periods nie mehr ändern, je mehr daten desto genauer ist die berechnung und desto näher an der Binance RSI berechnung! (die keiner offiziell wo hat wohl gemerkt!! Mein RSI hier ist eine nachberechnung mit library und chatGPT mix, welche hart erarbeitet wurde...
-nicht 100% aber sehr sehr nahe dran am binance RSI und genau das was ich wollte.
+#### Get account open orders for a symbol
+```java
+List<Order> openOrders = client.getOpenOrders(new OrderRequest("LINKETH"));
+System.out.println(openOrders);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[Order[symbol=LINKETH,orderId=12345,clientOrderId=XYZ,price=0.00010000,origQty=1000.00000000,executedQty=0.00000000,status=NEW,timeInForce=GTC,type=LIMIT,side=BUY,stopPrice=0.00000000,icebergQty=0.00000000,time=1508382291552]]
+```
+</details>
 
-Somit bleibt nur spielen mit dem interval. ich hatte 15min und 1h im test, besser wäre noch zu schauen was ist im daily und weekly passiert und dann entsprechend die boost erkennung einschränken. Kann A) mehr trades eingehen am 15min und 
-dennoch per daily, weekly dann den Token anschauen und entscheiden ob ma wirklich diesen trade eingehen sollte aufgrund daily und weekly daten.
+#### Get order status
+```java
+Order order = client.getOrderStatus(new OrderStatusRequest("LINKETH", 12345L));
+System.out.println(order.getExecutedQty());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+0.00000000
+```
+</details>
 
-# RSI indicator check
-RSI.active=true
-RSI.interval=1h
-RSI.periods=14
-RSI.datapoints=1000
-RSI.max=60
-RSI.min=0
+#### Placing a MARKET order
+```java
+NewOrderResponse newOrderResponse = client.newOrder(marketBuy("LINKETH", "1000"));
+System.out.println(newOrderResponse.getClientOrderId());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+XXXXXfc2XXzTXXGs66ZcXX
+```
+</details>
 
-# MARKT CRASH PROTECTION:
+#### Placing a LIMIT order
+```java
+NewOrderResponse newOrderResponse = client.newOrder(limitBuy("LINKETH", TimeInForce.GTC, "1000", "0.0001"));
+System.out.println(newOrderResponse.getTransactTime());
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+1508382322725
+```
+</details>
 
-Wenn der markt crashed verliert man maximal die aktuell offenen trades! Werden x trades in serie mit loss verkauft wird das live trading für x stunden pausiert:
+#### Canceling an order
+```java
+client.cancelOrder(new CancelOrderRequest("LINKETH", 123015L));
+```
 
-# if we have a loosing streak and e.g. market dumps, sleep for x hours before starting to trade again!
-marketCrash.active=true
-marketCrash.maxLossInARow=6
-marketCrash.cooldownInHours=6
+#### Withdraw
 
+In order to be able to withdraw programatically, please enable the `Enable Withdrawals` option in the API settings.
 
+```java
+client.withdraw("ETH", "0x123", "0.1", null);
+```
 
+#### Fetch withdraw history
+
+```java
+WithdrawHistory withdrawHistory = client.getWithdrawHistory("ETH");
+System.out.println(withdrawHistory);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+WithdrawHistory[withdrawList=[Withdraw[amount=0.1,address=0x123,asset=ETH,applyTime=2017-10-13 20:59:38,successTime=2017-10-13 21:20:09,txId=0x456,id=789]],success=true]
+```
+</details>
+
+#### Fetch deposit history
+```java
+DepositHistory depositHistory = client.getDepositHistory("ETH");
+System.out.println(depositHistory);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+DepositHistory[depositList=[Deposit[amount=0.100000000000000000,asset=ETH,insertTime=2017-10-18 13:03:39], Deposit[amount=1.000000000000000000,asset=NEO,insertTime=2017-10-13 20:24:04]],success=true]
+```
+</details>
+
+#### Get deposit address
+```java
+DepositAddress depositAddress = client.getDepositAddress("ETH");
+System.out.println(depositAddress);
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+DepositAddress[address=0x99...,success=true,addressTag=,asset=ETH]
+```
+</details>
+
+### User stream endpoints
+
+#### Start user data stream, keepalive, and close data stream
+```java
+String listenKey = client.startUserDataStream();
+client.keepAliveUserDataStream(listenKey);
+client.closeUserDataStream(listenKey);
+```
+
+### WebSocket API
+
+#### Initialize the WebSocket client
+```java
+BinanceApiWebSocketClient client = BinanceApiClientFactory.newInstance().newWebSocketClient();
+```
+
+#### Listen for aggregated trade events for ETH/BTC
+```java
+client.onAggTradeEvent("ethbtc", (AggTradeEvent response) -> {
+  System.out.println(response.getPrice());
+  System.out.println(response.getQuantity());
+});
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+0.05583500 / 1.06400000
+1508383333069
+0.05557200 / 2.00000000
+1508383345070
+0.05583200 / 2.68500000
+1508383352961
+...
+```
+</details>
+
+#### Listen for changes in the order book for ETH/BTC
+```java
+client.onDepthEvent("ethbtc", (DepthEvent response) -> {
+  System.out.println(response.getAsks());
+});
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+[OrderBookEntry[price=0.05559500,qty=7.94200000], OrderBookEntry[price=0.05559800,qty=0.00000000]]
+[OrderBookEntry[price=0.05558400,qty=30.61800000], OrderBookEntry[price=0.05559500,qty=0.00000000], OrderBookEntry[price=0.05560600,qty=8.32100000]]
+[OrderBookEntry[price=0.05559100,qty=7.86600000], OrderBookEntry[price=0.05560600,qty=0.00000000], OrderBookEntry[price=0.05607700,qty=5.15500000], OrderBookEntry[price=0.05620700,qty=0.00000000], OrderBookEntry[price=0.05842200,qty=0.00000000]]
+[OrderBookEntry[price=0.05558400,qty=29.61700000]]
+...
+```
+</details>
+
+#### Get 1m candlesticks in real-time for ETH/BTC
+```java
+client.onCandlestickEvent("ethbtc", CandlestickInterval.ONE_MINUTE, response -> System.out.println(response));
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+CandlestickEvent[eventType=kline,eventTime=1508417055113,symbol=ETHBTC,openTime=1508417040000,open=0.05376300,high=0.05376300,low=0.05372900,close=0.05372900,volume=0.49400000,closeTime=1508417099999,intervalId=1m,firstTradeId=2199019,lastTradeId=2199020,quoteAssetVolume=0.02654552,numberOfTrades=2,takerBuyBaseAssetVolume=0.00000000,takerBuyQuoteAssetVolume=0.00000000,isBarFinal=false]
+CandlestickEvent[eventType=kline,eventTime=1508417055145,symbol=ETHBTC,openTime=1508417040000,open=0.05376300,high=0.05376300,low=0.05371700,close=0.05371700,volume=0.62900000,closeTime=1508417099999,intervalId=1m,firstTradeId=2199019,lastTradeId=2199021,quoteAssetVolume=0.03379731,numberOfTrades=3,takerBuyBaseAssetVolume=0.00000000,takerBuyQuoteAssetVolume=0.00000000,isBarFinal=false]
+CandlestickEvent[eventType=kline,eventTime=1508417096085,symbol=ETHBTC,openTime=1508417040000,open=0.05376300,high=0.05376300,low=0.05370900,close=0.05370900,volume=0.68000000,closeTime=1508417099999,intervalId=1m,firstTradeId=2199019,lastTradeId=2199022,quoteAssetVolume=0.03653646,numberOfTrades=4,takerBuyBaseAssetVolume=0.00000000,takerBuyQuoteAssetVolume=0.00000000,isBarFinal=false]
+...
+```
+</details>
+
+#### Keep a local depth cache for a symbol
+
+Please see [DepthCacheExample.java](https://github.com/joaopsilva/binance-java-api/blob/master/src/test/java/com/binance/api/examples/DepthCacheExample.java) for an implementation which uses the binance-java-api for maintaining a local depth cache for a symbol. In the same folder, you can also find how to do caching of account balances, aggregated trades, and klines/candlesticks.
+
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+ASKS:
+0.05690700 / 6.15100000
+0.05447800 / 0.09500000
+0.05447700 / 28.22000000
+0.05439000 / 0.54500000
+0.05438400 / 1.10300000
+0.05436600 / 0.06100000
+0.05434000 / 0.05500000
+0.05432800 / 3.45100000
+0.05422700 / 1.11100000
+0.05410600 / 5.85900000
+0.05409300 / 4.50000000
+BIDS:
+0.05390000 / 2.26000000
+0.05389000 / 15.00000000
+0.05385600 / 1.95000000
+0.05367900 / 0.10000000
+0.05366700 / 2.27600000
+0.05360000 / 10.96100000
+0.05348500 / 14.04000000
+0.05345000 / 0.56100000
+0.05336200 / 21.10000000
+0.05336100 / 21.15000000
+0.05306600 / 0.21100000
+0.05116300 / 10.95000000
+BEST ASK: 0.05409300 / 4.50000000
+BEST BID: 0.05390000 / 2.26000000
+...
+```
+</details>
+
+#### Listen for changes in the account
+
+```java
+client.onUserDataUpdateEvent(listenKey, response -> {
+  if (response.getEventType() == UserDataUpdateEventType.ACCOUNT_UPDATE) {
+    AccountUpdateEvent accountUpdateEvent = response.getAccountUpdateEvent();
+    
+    // Print new balances of every available asset
+    System.out.println(accountUpdateEvent.getBalances());
+  } else {
+    OrderTradeUpdateEvent orderTradeUpdateEvent = response.getOrderTradeUpdateEvent();
+    
+    // Print details about an order/trade
+    System.out.println(orderTradeUpdateEvent);
+
+    // Print original quantity
+    System.out.println(orderTradeUpdateEvent.getOriginalQuantity());
+
+    // Or price
+    System.out.println(orderTradeUpdateEvent.getPrice());
+  }
+});
+```
+
+### Asynchronous requests
+
+To make an asynchronous request it is necessary to use the `BinanceApiAsyncRestClient`, and call the method with the same name as in the synchronous version, but passing a callback [`BinanceApiCallback`](https://github.com/joaopsilva/binance-java-api/blob/master/src/main/java/com/binance/api/client/BinanceApiCallback.java) that handles the response whenever it arrives.
+
+#### Get latest price of a symbol asynchronously
+```java
+client.get24HrPriceStatistics("NEOETH", (TickerStatistics response) -> {
+  System.out.println(response.getLastPrice());
+  System.out.println(response.getVolume());
+});
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+0.09100100
+```
+</details>
+
+#### Placing a LIMIT order asynchronously
+```java
+client.newOrder(limitBuy("LINKETH", TimeInForce.GTC, "1000", "0.0001"), (NewOrderResponse response) -> {
+  System.out.println(response.getTransactTime());
+});
+```
+<details>
+ <summary>View Response</summary>
+ 
+ ```java
+1508382322725
+```
+</details>
+
+### Exception handling
+
+Every API method can potentially throw an unchecked `BinanceApiException` which wraps the error message returned from the Binance API, or an exception, in case the request never properly reached the server.
+
+```java
+try {
+  client.getOrderBook("UNKNOWN", 10);
+} catch (BinanceApiException e) {
+  System.out.println(e.getError().getCode()); // -1121
+  System.out.println(e.getError().getMsg());  // Invalid symbol
+}
+```
+<details>
+ <summary>View Response</summary>
+ 
+```java
+-1121
+Invalid symbol
+```
+</details>
+
+### More examples
+An extensive set of examples, covering most aspects of the API, can be found at https://github.com/joaopsilva/binance-java-api/tree/master/src/test/java/com/binance/api/examples.
