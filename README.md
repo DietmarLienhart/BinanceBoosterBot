@@ -1,6 +1,4 @@
-============
 # Binance API Crypto Trading Bot using Binance Rest API
-============
 
 
 # Bot Beschreibung:
