@@ -1,13 +1,13 @@
-================================================================================================================
+================================================================================
 # BinanceBoosterBot Anleitung & Notizen
-================================================================================================================
+================================================================================
 
 # Binance API Crypto Trading Bot über Binance Rest API.
 
 
-================================================================================================================
+================================================================================
 Bot Beschreibung:
-================================================================================================================
+================================================================================
 Im prinzip suche ich nach kurz sprüngen nach oben (boost innerhalb von x minuten) oder mit minus werten nach unten (fallender kurz in den letzten x minuten)
 und steige dann mit limit buy (leicht überhöht damit ich trade erwische * 1.0028) ein und verkaufe mit x % sellpoint wieder oder fall wir weiter fallen market sell instantly
 wenn unter schwellwert (stoploss) fällt.
@@ -16,9 +16,9 @@ Dementsprechend wichtig wäre es rauszufinden welches boost oder drop wert signi
 weiter nach unten sackt oder nicht mehr weiter boostet ... Höhere werte liefern weniger trades könnten aber statitisch gesehen sicherer sein, das wird nur die zukunft zeigen in findings.log ...
 
 
-================================================================================================================
+================================================================================
 Das Analyse Script - findings.properties
-================================================================================================================
+================================================================================
 Alle findings werden als "treffer" mal am PI in findings.properties gespeichert, egal ob live trading aktiv ist oder nicht.
 Es ist ein property file damit man schneller beim simulieren von Ergebnissen in der IDE ein- und auskommentieren kann.
 Mit dem Analyse Skript "AnalyseFindings.java" kann man dann jederzeit die findings nachträglich einlesen und mit den parameters des bots evaluieren "was-wäre-wenn" gewesen. 
