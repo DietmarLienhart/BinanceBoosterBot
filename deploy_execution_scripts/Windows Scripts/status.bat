@@ -1,0 +1,1 @@
+java -jar findbooster.jar > run.log
