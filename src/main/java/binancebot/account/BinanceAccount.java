@@ -130,7 +130,7 @@ public class BinanceAccount {
 	}
 	
 	/**
-	 * get all Symbols in wallet without BTC (also ignore WABI, BNB)
+	 * get all Symbols in wallet without BTC (also ignore WABI, BNB, LUNA)
 	 * @return all current existing symbols in wallet
 	 * @throws Exception
 	 */
@@ -147,7 +147,7 @@ public class BinanceAccount {
 			
 			// filter WABI BNB BTC from list
 			String symbol = symbolJSON.getString("asset");
-			if (!symbol.equals("WABI") && !symbol.equals("BNB") && !symbol.equals("BTC")) {
+			if (!symbol.equals("WABI") && !symbol.equals("BNB") && !symbol.equals("BTC") && !symbol.equals("LUNA")) {
 				arrFiltered.put(symbolJSON);
 			}
 		}
@@ -454,45 +454,56 @@ public class BinanceAccount {
 		}
 	}
 
-	/** instantly sell off all pending trades via market sell to reset bot */
+	/** sell off all pending trades via market sell to reset bot */
 	public void marketSellALLOpenTrades() throws Exception {
 
 		// cancel all open orders
 		JSONArray arr = this.getAllOpenOrderIDs();
-		for (int i = 0; i <= arr.length() - 1; i++) {
-			org.json.simple.JSONObject currentTrade = (org.json.simple.JSONObject) org.json.simple.JSONValue.parse(arr.get(i).toString());
-			String symbol = currentTrade.get("symbol").toString();
-			String tradeID = currentTrade.get("orderId").toString();
 
-			// cancel existing trade
-			this.cancelOrder(symbol, tradeID);
+		if(arr.length() > 0) {
+			for (int i = 0; i <= arr.length() - 1; i++) {
+				org.json.simple.JSONObject currentTrade = (org.json.simple.JSONObject) org.json.simple.JSONValue.parse(arr.get(i).toString());
+				String symbol = currentTrade.get("symbol").toString();
+				String tradeID = currentTrade.get("orderId").toString();
 
-			// market sell total amount
-			Symbol symbolInfo = FindBooster.symbolsObj.get(symbol);
-			double freeAmount = this.getFreeAmount(symbolInfo.getNameShort());
-			String amount = DF.format(freeAmount, symbolInfo.getStepSize(), RoundingMode.DOWN);
-			this.placeOrder(symbol, amount, "", "SELL", "MARKET");
+				// cancel existing trade
+				this.cancelOrder(symbol, tradeID);
+
+				// market sell total amount
+				Symbol symbolInfo = FindBooster.symbolsObj.get(symbol);
+				double freeAmount = this.getFreeAmount(symbolInfo.getNameShort());
+				String amount = DF.format(freeAmount, symbolInfo.getStepSize(), RoundingMode.DOWN);
+				this.placeOrder(symbol, amount, "", "SELL", "MARKET");
+				
+			}
+		} else {
+			Log.log("There were no open orders found, required to sell off!");
 		}
+
 	}
 
 	/**
-	 * 
+	 * sell off any token that is hold in wallet which is NOT BTC!
 	 * @throws Exception
 	 */
 	public void marketSellAllSymbolsInWallet() throws Exception {
 
 		// get all symbols from wallet (exclude WABI, BNB, BTC)
 		JSONArray arr = this.getAllSymbolsInWalletExcludingBTC();
-			
-		for (int i = 0; i < arr.length(); i++) {
-			JSONObject object = arr.getJSONObject(i);
-			String symbol = object.getString("asset");
-			
-			// market sell total amount
-			Symbol symbolInfo = FindBooster.symbolsObj.get(symbol + "BTC");
-			double freeAmount = this.getFreeAmount(symbolInfo.getNameShort());
-			String amount = DF.format(freeAmount, symbolInfo.getStepSize(), RoundingMode.DOWN);
-			this.placeOrder(symbol + "BTC", amount, "", "SELL", "MARKET");
+		
+		if(arr.length() > 0) {
+			for (int i = 0; i < arr.length(); i++) {
+				JSONObject object = arr.getJSONObject(i);
+				String symbol = object.getString("asset");
+				
+				// market sell total amount
+				Symbol symbolInfo = FindBooster.symbolsObj.get(symbol + "BTC");
+				double freeAmount = this.getFreeAmount(symbolInfo.getNameShort());
+				String amount = DF.format(freeAmount, symbolInfo.getStepSize(), RoundingMode.DOWN);
+				this.placeOrder(symbol + "BTC", amount, "", "SELL", "MARKET");
+			}
+		} else {
+			Log.log("There were no symbols in wallet other than BTC in wallet, required to sell off!");
 		}
 
 	}
