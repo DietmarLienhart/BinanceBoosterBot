@@ -56,6 +56,7 @@ public class MarketDataRest {
 		// fetch data for all in constructor given symbols
 		LinkedHashMap<String, Object> symbolParam = new LinkedHashMap<>();
 		symbolParam.put("symbols", this.symbols);
+		
 		String result = client.createMarket().ticker24H(symbolParam);
 		JSONArray arr = new JSONArray(result);
 

@@ -96,7 +96,7 @@ public class MarketDataStream {
 						} else {
 							// print token that we do not have in our list, wait for all symbols to be loaded from file at first!
 							if (SymbolsFileReader.allSymbolsLoaded && !FindBooster.ignoredList.contains(symbolName)) {
-								Log.newSymbolsIntoPairsFile(symbolName, "./pairs.properties");
+								Log.addSymbolsToPairsFile(symbolName, "./pairs.properties");
 							}
 						}
 					}

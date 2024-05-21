@@ -27,12 +27,14 @@ public class FindBooster {
 
 	// symbol definition lists
 	public static volatile ArrayList<String> symbolsList = new ArrayList<String>();
-	public static volatile ArrayList<String> ignoredList = new ArrayList<String>();
 	public static HashMap<String, Symbol> symbolsObj = new HashMap<String, Symbol>();
-
+	
+	// ignored list for symbols we do not want to touch!
+	public static volatile ArrayList<String> ignoredList = new ArrayList<String>();
+	
 	// start the market data stream
 	public MarketDataStream marketDataStream;
-	public MarketDataRest restAPI;
+	public static MarketDataRest restAPI;
 
 	// global account for sharing invest balance
 	public volatile BinanceAccount global_account = new BinanceAccount();
@@ -111,10 +113,8 @@ public class FindBooster {
 						// unlist unavailable symbols where no data is sent anymore!!!
 						if (startPrice.equals("0.00000000")) {
 							lock.countDown();
-							Log.logAndFile(
-									"Could not fetch market data for: " + symbol
-											+ " - terminated thread! Remaining threads: " + lock.getCount(),
-									"./SymbolsUnlisted.log");
+							// Log.logAndFile( "Could not fetch market data for: " + symbol + " - terminated thread! Remaining threads: " + lock.getCount(), "./SymbolsUnlisted.log");
+							Log.removeSymbolFromPairsFile(symbol, "./pairs.properties");
 							break;
 						}
 

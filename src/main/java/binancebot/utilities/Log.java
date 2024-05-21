@@ -1,8 +1,16 @@
 package binancebot.utilities;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
+
+import binancebot.FindBooster;
 
 public class Log {
 	
@@ -55,23 +63,64 @@ public class Log {
 		}
 	}
 	
-	public static void newSymbolsIntoPairsFile(String message, String filePath) {
-		if(!fileContains(filePath,message)) {
+	/** add new symbol into pairs file */
+	public static synchronized void addSymbolsToPairsFile(String symbol, String filePath) throws Exception {
+		if(!fileContains(filePath, symbol)) {
 			try {
 				FileWriter fw = new FileWriter(filePath, true); // the true will append the new data
-				fw.write(System.lineSeparator() + message);
+				fw.write(System.lineSeparator() + symbol);
 				fw.close();
 			} catch (Exception e) {
-				System.err.println("Exception writing file: " + e.toString());
+				System.err.println("Exception writing into file: " + filePath + " Exception: " + e.toString());
 			}
+			
+			// create the updated object and merge/add it into the symbolsObj list and symbolsList
+			FindBooster.restAPI.getSingleSymbols24hTicker(symbol).forEach((key, value) -> FindBooster.symbolsObj.put(key, value));
+			FindBooster.symbolsList.add(symbol);
 		}
 	}
+    
+	/** remove symbol from pairs properties list */
+    public static synchronized void removeSymbolFromPairsFile(String symbol, String filePath) {
+          {
+            try (BufferedReader reader = new BufferedReader(new FileReader(filePath));
+                 BufferedWriter writer = new BufferedWriter(new FileWriter(filePath + ".tmp"))) {
+
+                List<String> filteredLines = new ArrayList<>();
+                String line;
+
+                while ((line = reader.readLine()) != null) {
+                    if (!line.contains(symbol)) {
+                        filteredLines.add(line);
+                    }
+                }
+
+                // Write the filtered lines back to the original file
+                try (BufferedWriter originalWriter = new BufferedWriter(new FileWriter(filePath))) {
+                    for (String filteredLine : filteredLines) {
+                        originalWriter.write(filteredLine);
+                        originalWriter.newLine();
+                    }
+                }
+                
+                // remove symbol from symbolsObj list and symbols list
+				FindBooster.symbolsObj.remove(symbol);
+				FindBooster.symbolsList.remove(symbol);
+
+                System.out.println("Unlisted symbol was found! Removed " + symbol + " from pairs.properties!");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+	
 
 	/** remove log files */
 	public static void cleanupAllLogFiles() {
 		if (Boolean.valueOf(Env.getProperty("cleanupAllLogFiles"))) {
 			try {
-//				File file1 = new File("./findings.properties"); TODO enable findings deletion when bot is stable enough
+//				findings are always kept for now!
+//				File file1 = new File("./findings.properties"); 
 //				if(file1.exists()) {
 //					file1.delete();
 //				}

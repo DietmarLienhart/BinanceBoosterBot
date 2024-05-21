@@ -110,7 +110,7 @@ public class BinanceAccount {
 				String symbol = object.getString("asset");
 
 				// ignore crap coins!!!
-				if (!symbol.equals("WABI") && !symbol.equals("BNB") && !symbol.equals("EUR")) {
+				if (!symbol.equals("WABI") && !symbol.equals("BNB") && !symbol.equals("EUR") && !symbol.equals("LUNA")) {
 					if (symbol.equals("BTC")) {
 						totalBTCInWallet += Double.valueOf(object.getString("free"));
 						totalBTCInWallet += Double.valueOf(object.getString("locked"));
